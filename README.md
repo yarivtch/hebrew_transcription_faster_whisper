@@ -14,7 +14,8 @@
 ## התקנה והרצה
 
 1. הורד את הקוד מהמאגר: 
-git clone https://github.com/username/hebrew_transcription_faster_whisper.git
+git clone https://github.com/yarivtch/hebrew_transcription_faster_whisper.git
+
 cd hebrew_transcription_faster_whisper
 
 2. הרץ שרת מקומי פשוט לפיתוח:
