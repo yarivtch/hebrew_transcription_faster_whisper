@@ -144,6 +144,8 @@ header {
     display: none !important;
     background-color: transparent;
     z-index: -1;
+    opacity: 0;
+    visibility: hidden;
 }
 
 .spinner {

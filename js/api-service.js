@@ -13,14 +13,29 @@ class ApiService {
      * @returns {Promise<Object>} - תוצאות התמלול
      */
     async transcribeAudio(audioFile, sensitivity) {
-        // לצורכי בדיקה בלבד
-        return new Promise(resolve => {
-            setTimeout(() => {
-                resolve({
-                    text: "זוהי דוגמה לתמלול.\nשורה שנייה לדוגמה.\nשורה שלישית."
-                });
-            }, 2000);
-        });
+        try {
+            const formData = new FormData();
+            formData.append('file', audioFile);  // שים לב: השם 'file' צריך להתאים למה שהשרת מצפה לקבל
+            formData.append('sensitivity', sensitivity);
+
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                body: formData,
+                // אם השרת דורש אימות, אפשר להוסיף headers
+                // headers: {
+                //     'Authorization': 'Bearer YOUR_TOKEN'
+                // }
+            });
+
+            if (!response.ok) {
+                throw new Error(`שגיאת שרת: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('שגיאה בתמלול:', error);
+            throw new Error('אירעה שגיאה בתהליך התמלול. אנא נסה שנית.');
+        }
     }
 
     /**
@@ -28,8 +43,15 @@ class ApiService {
      * @returns {Promise<boolean>}
      */
     async checkServerStatus() {
-        // בזמן פיתוח נחזיר תמיד true
-        return true;
+        try {
+            const response = await fetch(`${this.apiUrl}/status`, {
+                method: 'GET',
+            });
+            return response.ok;
+        } catch (error) {
+            console.error('שגיאה בבדיקת סטטוס השרת:', error);
+            return false;
+        }
     }
 }
 

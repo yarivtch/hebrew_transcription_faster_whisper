@@ -17,6 +17,7 @@ const app = new class App {
         this.sensitivityValue = document.getElementById('sensitivityValue');
         this.transcriptionText = document.getElementById('transcriptionText');
         this.saveTranscriptionBtn = document.getElementById('saveTranscriptionBtn');
+        this.transcribeBtn = document.getElementById('transcribeBtn');
         this.loader = document.getElementById('loader');
 
         this.currentFile = null;
@@ -64,6 +65,9 @@ const app = new class App {
 
         // אירוע שמירת תמלול
         this.saveTranscriptionBtn.addEventListener('click', () => this.saveTranscription());
+
+        // אירוע לחיצה על כפתור תמלול
+        this.transcribeBtn.addEventListener('click', () => this.transcribeAudio());
     }
 
     /**
@@ -76,7 +80,7 @@ const app = new class App {
             this.loader.hidden = true;
             await audioController.loadAudio(file);
             await waveformVisualizer.processAudio(audioController.audioBuffer);
-            this.transcribeAudio();
+            this.transcribeBtn.hidden = false;  // הצג את כפתור התמלול
         } catch (error) {
             this.showError(error.message);
         }
@@ -89,7 +93,10 @@ const app = new class App {
         if (!this.currentFile) return;
 
         try {
+            // וודא שה-loader מוצג
             this.loader.hidden = false;
+            this.loader.style.display = 'flex';
+            
             const sensitivity = parseInt(this.sensitivitySlider.value);
             this.transcriptionResult = await apiService.transcribeAudio(this.currentFile, sensitivity);
             this.displayTranscription(this.transcriptionResult);
@@ -97,7 +104,9 @@ const app = new class App {
         } catch (error) {
             this.showError(error.message);
         } finally {
+            // וודא שה-loader מוסתר
             this.loader.hidden = true;
+            this.loader.style.display = 'none';
         }
     }
 
@@ -106,12 +115,20 @@ const app = new class App {
      * @param {Object} result - תוצאות התמלול
      */
     displayTranscription(result) {
-        if (!result || !result.text) {
+        if (!result) {
             this.transcriptionText.innerHTML = '<p>לא נמצא תמלול</p>';
             return;
         }
 
-        this.transcriptionText.innerHTML = result.text
+        // בדיקה אם יש שדה full_text (כמו שהשרת שלך מחזיר) או text (כמו בדוגמה המקורית)
+        const transcriptionText = result.full_text || result.text;
+        
+        if (!transcriptionText) {
+            this.transcriptionText.innerHTML = '<p>לא נמצא תמלול</p>';
+            return;
+        }
+
+        this.transcriptionText.innerHTML = transcriptionText
             .split('\n')
             .map(line => `<p>${line}</p>`)
             .join('');
@@ -123,7 +140,12 @@ const app = new class App {
     saveTranscription() {
         if (!this.transcriptionResult) return;
 
-        const blob = new Blob([this.transcriptionResult.text], { type: 'text/plain' });
+        // בדיקה אם יש שדה full_text או text
+        const transcriptionText = this.transcriptionResult.full_text || this.transcriptionResult.text;
+        
+        if (!transcriptionText) return;
+
+        const blob = new Blob([transcriptionText], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
