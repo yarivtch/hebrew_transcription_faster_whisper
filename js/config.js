@@ -3,7 +3,7 @@ const config = {
         apiUrl: 'http://localhost:8000/transcribe',
     },
     production: {
-        apiUrl: 'https://your-actual-server.onrender.com/transcribe',
+        apiUrl: 'https://hebrew-transcription-f-w-service.onrender.com/transcribe',
     }
 };
 

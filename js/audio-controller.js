@@ -26,7 +26,9 @@ class AudioController {
             const arrayBuffer = await audioFile.arrayBuffer();
             this.audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
             this.resetPlayback();
-            document.querySelector('.audio-controls').hidden = false;
+            
+            // עדכון לממשק החדש - אין צורך להסתיר/להציג אלמנטים כאן
+            // document.querySelector('.audio-controls').hidden = false;
         } catch (error) {
             console.error('שגיאה בטעינת האודיו:', error);
             throw new Error('לא ניתן לטעון את קובץ האודיו');
@@ -51,33 +53,57 @@ class AudioController {
      */
     play() {
         if (this.audioSource) {
-            this.audioSource.stop();
+            this.audioSource.disconnect();
         }
 
         this.audioSource = this.audioContext.createBufferSource();
         this.audioSource.buffer = this.audioBuffer;
         this.audioSource.connect(this.audioContext.destination);
-
+        
         const offset = this.pauseTime;
+        this.audioSource.start(0, offset);
+        
+        this.isPlaying = true;
         this.startTime = this.audioContext.currentTime - offset;
         
-        this.audioSource.start(0, offset);
-        this.isPlaying = true;
-        this.updatePlayPauseButton();
+        // עדכון לממשק החדש - שימוש באייקון
+        const playIcon = this.playPauseBtn.querySelector('i');
+        if (playIcon) {
+            playIcon.className = 'fas fa-pause';
+        } else {
+            this.playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+        }
+        
         this.startProgressUpdate();
+        
+        this.audioSource.onended = () => {
+            if (this.isPlaying) {
+                this.resetPlayback();
+            }
+        };
     }
 
     /**
      * השהיית האודיו
      */
     pause() {
-        if (this.audioSource) {
-            this.audioSource.stop();
-            this.pauseTime = this.audioContext.currentTime - this.startTime;
-            this.isPlaying = false;
-            this.updatePlayPauseButton();
-            this.stopProgressUpdate();
+        if (!this.isPlaying || !this.audioSource) return;
+        
+        this.audioSource.disconnect();
+        this.audioSource = null;
+        this.isPlaying = false;
+        
+        this.pauseTime = this.audioContext.currentTime - this.startTime;
+        
+        // עדכון לממשק החדש - שימוש באייקון
+        const playIcon = this.playPauseBtn.querySelector('i');
+        if (playIcon) {
+            playIcon.className = 'fas fa-play';
+        } else {
+            this.playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
         }
+        
+        this.stopProgressUpdate();
     }
 
     /**
@@ -85,37 +111,40 @@ class AudioController {
      */
     resetPlayback() {
         if (this.audioSource) {
-            this.audioSource.stop();
+            this.audioSource.disconnect();
+            this.audioSource = null;
         }
+        
         this.isPlaying = false;
-        this.startTime = 0;
         this.pauseTime = 0;
-        this.updatePlayPauseButton();
+        
+        // עדכון לממשק החדש - שימוש באייקון
+        const playIcon = this.playPauseBtn.querySelector('i');
+        if (playIcon) {
+            playIcon.className = 'fas fa-play';
+        } else {
+            this.playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+        }
+        
         this.updateProgressBar(0);
+        this.stopProgressUpdate();
     }
 
     /**
-     * עדכון כפתור הפעלה/השהייה
-     */
-    updatePlayPauseButton() {
-        const icon = this.isPlaying ? '⏸' : '▶';
-        this.playPauseBtn.querySelector('.play-icon').textContent = icon;
-    }
-
-    /**
-     * הגדרת מאזיני אירועים לסרגל ההתקדמות
+     * הגדרת מאזינים לאירועים של סרגל ההתקדמות
      */
     setupProgressBarEvents() {
-        const progressContainer = document.querySelector('.progress-container');
+        const progressContainer = this.progressBar.parentElement;
         
         progressContainer.addEventListener('click', (e) => {
             if (!this.audioBuffer) return;
             
             const rect = progressContainer.getBoundingClientRect();
-            const ratio = (e.clientX - rect.left) / rect.width;
-            const newTime = ratio * this.audioBuffer.duration;
+            const clickPosition = e.clientX - rect.left;
+            const percentage = (clickPosition / rect.width) * 100;
+            const time = (percentage / 100) * this.audioBuffer.duration;
             
-            this.seekTo(newTime);
+            this.seekTo(time);
         });
     }
 
