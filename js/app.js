@@ -100,16 +100,66 @@ document.addEventListener('DOMContentLoaded', function() {
                     loader.style.display = 'none';
                 }
                 
-                // הצגת התמלול בתיבת טקסט - פונקציונליות מינימלית
+                // הצגת התמלול בתיבת טקסט ובטבלה - פונקציונליות משופרת
                 if (transcriptionContainer) {
                     if (data.full_text) {
-                        transcriptionContainer.innerHTML = `
+                        // יצירת תוכן HTML עם טבלה וטקסט מלא
+                        let htmlContent = `
                             <h3>תוצאות התמלול:</h3>
-                            <textarea class="full-text-area" readonly>${data.full_text}</textarea>
+                            <div class="transcription-results">
+                                <div class="segments-table">
+                                    <h4>קטעי תמלול:</h4>
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>התחלה</th>
+                                                <th>סיום</th>
+                                                <th>טקסט</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                        `;
+                        
+                        // אם יש segments, נוסיף אותם לטבלה
+                        if (data.segments && data.segments.length > 0) {
+                            data.segments.forEach(segment => {
+                                // המרת זמנים לפורמט קריא
+                                const startTime = formatTime(segment.start);
+                                const endTime = formatTime(segment.end);
+                                
+                                htmlContent += `
+                                    <tr>
+                                        <td>${startTime}</td>
+                                        <td>${endTime}</td>
+                                        <td>${segment.text}</td>
+                                    </tr>
+                                `;
+                            });
+                        } else {
+                            htmlContent += `
+                                <tr>
+                                    <td colspan="3">אין נתוני קטעים זמינים</td>
+                                </tr>
+                            `;
+                        }
+                        
+                        htmlContent += `
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="full-text-section">
+                                <h4>טקסט מלא:</h4>
+                                <textarea class="full-text-area" readonly>${data.full_text}</textarea>
+                            </div>
+                            
                             <button id="saveBtn" class="action-btn">
                                 <i class="fas fa-save"></i> שמור תמלול
                             </button>
+                        </div>
                         `;
+                        
+                        transcriptionContainer.innerHTML = htmlContent;
                         
                         // הוספת אירוע לכפתור השמירה
                         const saveBtn = document.getElementById('saveBtn');
@@ -153,5 +203,12 @@ document.addEventListener('DOMContentLoaded', function() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    }
+    
+    // פונקציה להמרת זמן בשניות לפורמט קריא
+    function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = Math.floor(seconds % 60);
+        return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
     }
 });
