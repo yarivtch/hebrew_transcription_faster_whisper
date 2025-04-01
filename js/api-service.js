@@ -12,29 +12,25 @@ class ApiService {
      * @param {number} sensitivity - רגישות זיהוי הדוברים (0-100)
      * @returns {Promise<Object>} - תוצאות התמלול
      */
-    async transcribeAudio(audioFile, sensitivity) {
+    async transcribeAudio() {
+        if (!this.currentFile) return;
+    
         try {
-            const formData = new FormData();
-            formData.append('file', audioFile);  // שים לב: השם 'file' צריך להתאים למה שהשרת מצפה לקבל
-            formData.append('sensitivity', sensitivity);
-
-            const response = await fetch(this.apiUrl, {
-                method: 'POST',
-                body: formData,
-                // אם השרת דורש אימות, אפשר להוסיף headers
-                // headers: {
-                //     'Authorization': 'Bearer YOUR_TOKEN'
-                // }
-            });
-
-            if (!response.ok) {
-                throw new Error(`שגיאת שרת: ${response.status}`);
-            }
-
-            return await response.json();
+            // וודא שה-loader מוצג
+            this.showLoader('מתבצע תמלול...');
+            
+            const sensitivity = parseInt(this.sensitivitySlider.value);
+            this.transcriptionResult = await apiService.transcribeAudio(this.currentFile, sensitivity);
+            
+            // הצגת הודעת התמלול
+            this.transcriptionMessage.hidden = false;
+            this.displayTranscription(this.transcriptionResult);
+            this.saveTranscriptionBtn.hidden = false;
         } catch (error) {
-            console.error('שגיאה בתמלול:', error);
-            throw new Error('אירעה שגיאה בתהליך התמלול. אנא נסה שנית.');
+            this.showError(error.message);
+        } finally {
+            // וודא שה-loader מוסתר
+            this.hideLoader();
         }
     }
 
