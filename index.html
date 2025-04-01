@@ -8,115 +8,34 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="app-container">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h1>מערכת תמלול</h1>
-                <button class="close-sidebar" id="closeSidebar">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="new-chat">
-                <button id="newChatBtn" class="new-chat-btn">
-                    <i class="fas fa-plus"></i>
-                    תמלול חדש
-                </button>
-            </div>
-            <div class="history">
-                <h3>היסטוריה</h3>
-                <ul id="historyList" class="history-list">
-                    <!-- היסטוריית תמלולים תופיע כאן -->
-                </ul>
-            </div>
-            <div class="sidebar-footer">
-                <p>פותח ע"י יריב</p>
-            </div>
-        </aside>
-
-        <main class="main-content">
-            <div class="main-header">
-                <button class="menu-toggle" id="menuToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <h2>מערכת תמלול אודיו</h2>
+    <div class="container">
+        <h1>מערכת תמלול אודיו</h1>
+        
+        <div class="upload-section">
+            <div class="drop-zone" id="dropZone">
+                <i class="fas fa-microphone"></i>
+                <p>גרור קובץ אודיו לכאן או לחץ לבחירה</p>
+                <input type="file" id="audioInput" accept="audio/*" hidden>
             </div>
             
-            <div class="chat-container">
-                <div class="welcome-screen" id="welcomeScreen">
-                    <h2>ברוכים הבאים למערכת תמלול אודיו</h2>
-                    <p>העלה קובץ אודיו לתמלול מהיר ומדויק בעברית</p>
-                    <div class="drop-zone" id="dropZone">
-                        <i class="fas fa-microphone"></i>
-                        <p>גרור קובץ אודיו לכאן או לחץ לבחירה</p>
-                        <input type="file" id="audioInput" accept="audio/*" hidden>
-                    </div>
-                </div>
-
-                <div class="chat-messages" id="chatMessages" hidden>
-                    <div class="message system-message">
-                        <div class="message-content">
-                            <p>ברוך הבא למערכת התמלול. העלית קובץ אודיו, כעת תוכל לתמלל אותו.</p>
-                        </div>
-                    </div>
-                    
-                    <div class="message user-message" id="audioMessage" hidden>
-                        <div class="message-avatar">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div class="message-content">
-                            <div class="audio-player">
-                                <canvas id="waveform"></canvas>
-                                <div class="controls">
-                                    <button id="playPauseBtn" class="control-btn">
-                                        <i class="fas fa-play"></i>
-                                    </button>
-                                    <div class="progress-container">
-                                        <div id="progressBar" class="progress-bar"></div>
-                                    </div>
-                                    <div id="timeDisplay" class="time-display">00:00 / 00:00</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="message assistant-message" id="transcriptionMessage" hidden>
-                        <div class="message-avatar">
-                            <i class="fas fa-robot"></i>
-                        </div>
-                        <div class="message-content">
-                            <div id="transcriptionText" class="transcription-text"></div>
-                        </div>
-                    </div>
-                </div>
+            <div id="fileSelectionMessage" style="display: none; text-align: center; margin-top: 15px;">
+                <p>קובץ נבחר: <span id="fileNameDisplay"></span></p>
             </div>
-
-            <div class="chat-input" id="chatInput" hidden>
-                <div class="sensitivity-control">
-                    <label for="sensitivitySlider">רגישות זיהוי דוברים:</label>
-                    <input type="range" id="sensitivitySlider" min="0" max="100" value="50">
-                    <span id="sensitivityValue">50</span>
-                </div>
-                <div class="input-actions">
-                    <button id="transcribeBtn" class="action-btn">
-                        <i class="fas fa-wand-magic-sparkles"></i>
-                        תמלל
-                    </button>
-                    <button id="saveTranscriptionBtn" class="action-btn" hidden>
-                        <i class="fas fa-save"></i>
-                        שמור תמלול
-                    </button>
-                </div>
-            </div>
-        </main>
+            
+            <button id="transcribeBtn" class="action-btn">
+                <i class="fas fa-wand-magic-sparkles"></i> תמלל
+            </button>
+        </div>
+        
+        <div id="transcriptionContainer" class="transcription-container"></div>
     </div>
-
-    <div id="loader" class="loader" hidden="true">
+    
+    <div id="loader" class="loader" style="display: none;">
         <div class="spinner"></div>
         <p class="loader-message">מתבצע תמלול...</p>
     </div>
-
-    <div class="overlay" id="overlay"></div>
-
-    <script type="module" src="js/app.js"></script>
+    
+    <!-- חזרה לקובץ המקורי -->
+    <script src="js/app.js"></script>
 </body>
-</html>     
+</html>

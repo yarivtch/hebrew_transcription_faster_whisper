@@ -1,321 +1,150 @@
-import { currentConfig } from './config.js';
-import apiService from './api-service.js';
-import audioController from './audio-controller.js';
-import waveformVisualizer from './waveform-visualizer.js';
-
-// הסתרת ה-loader מיד בטעינה
-// הסתרת ה-loader מיד בטעינה
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("טוען אפליקציית תמלול מינימליסטית");
+    
+    // אתחול אלמנטים בסיסיים בלבד
+    const dropZone = document.getElementById('dropZone');
+    const audioInput = document.getElementById('audioInput');
     const loader = document.getElementById('loader');
-    if (loader) {
-        loader.hidden = true;
-        loader.style.display = 'none';
+    const transcribeBtn = document.getElementById('transcribeBtn');
+    const transcriptionContainer = document.getElementById('transcriptionContainer');
+    const fileSelectionMessage = document.getElementById('fileSelectionMessage');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    
+    // משתנה לשמירת הקובץ הנוכחי
+    let currentFile = null;
+    
+    // הסתרת כפתור התמלול בהתחלה
+    if (transcribeBtn) {
+        transcribeBtn.style.display = 'none';
     }
-});
-
-// וידוא שהממשק מוצג (עדכון לממשק החדש)
-document.querySelector('.app-container').style.opacity = '1';
-
-const app = new class App {
-    constructor() {
-        // אלמנטים של ממשק המשתמש
-        this.dropZone = document.getElementById('dropZone');
-        this.audioInput = document.getElementById('audioInput');
-        this.sensitivitySlider = document.getElementById('sensitivitySlider');
-        this.sensitivityValue = document.getElementById('sensitivityValue');
-        this.transcriptionText = document.getElementById('transcriptionText');
-        this.saveTranscriptionBtn = document.getElementById('saveTranscriptionBtn');
-        this.transcribeBtn = document.getElementById('transcribeBtn');
-        this.loader = document.getElementById('loader');
-        this.newChatBtn = document.getElementById('newChatBtn');
-        
-        // אלמנטים של מסך הצ'אט
-        this.welcomeScreen = document.getElementById('welcomeScreen');
-        this.chatMessages = document.getElementById('chatMessages');
-        this.chatInput = document.getElementById('chatInput');
-        this.audioMessage = document.getElementById('audioMessage');
-        this.transcriptionMessage = document.getElementById('transcriptionMessage');
-        
-        this.currentFile = null;
-        this.transcriptionResult = null;
-        this.transcriptionHistory = [];
-
-        this.initializeEventListeners();
-    }
-
-    /**
-     * אתחול מאזיני אירועים
-     */
-    initializeEventListeners() {
-        // אירועי גרירת קבצים
-        this.dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            this.dropZone.classList.add('drag-over');
-        });
-
-        this.dropZone.addEventListener('dragleave', () => {
-            this.dropZone.classList.remove('drag-over');
-        });
-
-        this.dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            this.dropZone.classList.remove('drag-over');
-            const file = e.dataTransfer.files[0];
-            if (file && file.type.startsWith('audio/')) {
-                this.handleAudioFile(file);
+    
+    // טיפול בהעלאת קובץ
+    if (dropZone) {
+        dropZone.addEventListener('click', () => {
+            if (audioInput) {
+                audioInput.click();
             }
         });
-
-        // אירוע בחירת קובץ
-        this.dropZone.addEventListener('click', () => this.audioInput.click());
-        this.audioInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                this.handleAudioFile(file);
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            
+            if (e.dataTransfer.files.length) {
+                handleFileSelection(e.dataTransfer.files[0]);
             }
         });
-
-        // אירוע שינוי רגישות
-        this.sensitivitySlider.addEventListener('input', () => {
-            this.sensitivityValue.textContent = this.sensitivitySlider.value;
-        });
-
-        // אירוע שמירת תמלול
-        this.saveTranscriptionBtn.addEventListener('click', () => this.saveTranscription());
-
-        // אירוע לחיצה על כפתור תמלול
-        this.transcribeBtn.addEventListener('click', () => this.transcribeAudio());
-        
-        // אירוע לחיצה על כפתור צ'אט חדש
-        this.newChatBtn.addEventListener('click', () => this.resetChat());
-        // תמיכה ברספונסיביות
-        const menuToggle = document.getElementById('menuToggle');
-        const closeSidebar = document.getElementById('closeSidebar');
-        const sidebar = document.querySelector('.sidebar');
-        const overlay = document.getElementById('overlay');
-
-        if (menuToggle) {
-            menuToggle.addEventListener('click', () => {
-                sidebar.classList.add('open');
-                overlay.classList.add('active');
-            });
-        }
-
-        if (closeSidebar) {
-            closeSidebar.addEventListener('click', () => {
-                sidebar.classList.remove('open');
-                overlay.classList.remove('active');
-            });
-        }
-
-        if (overlay) {
-            overlay.addEventListener('click', () => {
-                sidebar.classList.remove('open');
-                overlay.classList.remove('active');
-            });
-        }
-
-        // הוספת קלאס loaded לאפליקציה לאנימציית טעינה
-        setTimeout(() => {
-            document.querySelector('.app-container').classList.add('loaded');
-        }, 100);
-    }
-
-        /**
-     * הצגת מצב טעינה
-     * @param {string} message - הודעת טעינה
-     */
-    showLoader(message = 'טוען...') {
-        const loaderMessage = this.loader.querySelector('.loader-message');
-        if (loaderMessage) {
-            loaderMessage.textContent = message;
-        }
-        this.loader.hidden = false;
-        this.loader.style.display = 'flex';
-    }
-
-    /**
-     * הסתרת מצב טעינה
-     */
-    hideLoader() {
-        this.loader.hidden = true;
-        this.loader.style.display = 'none';
-    }
-
-    /**
-     * טיפול בקובץ אודיו חדש
-     * @param {File} file - קובץ האודיו שנבחר
-     */
-    
-    async handleAudioFile(file) {
-        try {
-            console.log("מטפל בקובץ אודיו:", file.name);
-            this.currentFile = file;
-            
-            // מעבר למצב צ'אט
-            this.welcomeScreen.hidden = true;
-            this.chatMessages.hidden = false;
-            this.chatInput.hidden = false;
-            this.audioMessage.hidden = false;
-            
-            // טעינת האודיו
-            this.showLoader('טוען את קובץ האודיו...');
-            
-            await audioController.loadAudio(file);
-            
-            this.showLoader('מעבד את צורת הגל...');
-            await waveformVisualizer.processAudio(audioController.audioBuffer);
-            
-            // הסתרת הלודר
-            this.hideLoader();
-            
-            // הוספת שם הקובץ להיסטוריה
-            this.addToHistory(file.name);
-        } catch (error) {
-            console.error("שגיאה בטיפול בקובץ אודיו:", error);
-            this.showError(error.message);
-            this.hideLoader();
-        }
     }
     
-    /**
-     * הוספת תמלול להיסטוריה
-     * @param {string} name - שם התמלול
-     */
-    addToHistory(name) {
-        const historyList = document.getElementById('historyList');
-        const listItem = document.createElement('li');
-        listItem.textContent = name;
-        historyList.appendChild(listItem);
-        
-        // שמירה במערך ההיסטוריה
-        this.transcriptionHistory.push({
-            name: name,
-            date: new Date()
+    if (audioInput) {
+        audioInput.addEventListener('change', () => {
+            if (audioInput.files.length) {
+                handleFileSelection(audioInput.files[0]);
+            }
         });
     }
     
-    /**
-     * איפוס הצ'אט למצב התחלתי
-     */
-    resetChat() {
-        this.welcomeScreen.hidden = false;
-        this.chatMessages.hidden = true;
-        this.chatInput.hidden = true;
-        this.audioMessage.hidden = true;
-        this.transcriptionMessage.hidden = true;
-        this.saveTranscriptionBtn.hidden = true;
+    // טיפול בבחירת קובץ - פונקציונליות מינימלית
+    function handleFileSelection(file) {
+        console.log("נבחר קובץ:", file.name);
+        currentFile = file;
         
-        this.currentFile = null;
-        this.transcriptionResult = null;
-        this.transcriptionText.innerHTML = '';
-    }
-
-    /**
-     * שליחת האודיו לתמלול
-     */
-    async transcribeAudio() {
-        if (!this.currentFile) return;
-
-        try {
-            // וודא שה-loader מוצג
-            this.loader.hidden = false;
-            this.loader.style.display = 'flex';
-            
-            const sensitivity = parseInt(this.sensitivitySlider.value);
-            this.transcriptionResult = await apiService.transcribeAudio(this.currentFile, sensitivity);
-            
-            // הצגת הודעת התמלול
-            this.transcriptionMessage.hidden = false;
-            this.displayTranscription(this.transcriptionResult);
-            this.saveTranscriptionBtn.hidden = false;
-        } catch (error) {
-            this.showError(error.message);
-        } finally {
-            // וודא שה-loader מוסתר
-            this.loader.hidden = true;
-            this.loader.style.display = 'none';
+        // עדכון הודעה על הקובץ שנבחר
+        if (fileNameDisplay) {
+            fileNameDisplay.textContent = file.name;
+        }
+        
+        if (fileSelectionMessage) {
+            fileSelectionMessage.style.display = 'block';
+        }
+        
+        // הצגת כפתור התמלול
+        if (transcribeBtn) {
+            transcribeBtn.style.display = 'block';
         }
     }
-
-    /**
-     * הצגת התמלול בממשק
-     * @param {Object} result - תוצאות התמלול
-     */
-    /**
-     * הצגת התמלול בממשק
-     * @param {Object} result - תוצאות התמלול
-     */
-    displayTranscription(result) {
-        if (!result) {
-            this.transcriptionText.innerHTML = '<div class="empty-result">לא נמצא תמלול</div>';
-            return;
-        }
-
-        // בדיקה אם יש שדה full_text או text
-        const transcriptionText = result.full_text || result.text;
-        
-        if (!transcriptionText) {
-            this.transcriptionText.innerHTML = '<div class="empty-result">לא נמצא תמלול</div>';
-            return;
-        }
-
-        // בדיקה אם יש מידע על דוברים
-        if (result.speakers && result.segments) {
-            let html = '';
+    
+    // טיפול בכפתור תמלול - פונקציונליות מינימלית
+    if (transcribeBtn) {
+        transcribeBtn.addEventListener('click', () => {
+            if (!currentFile) {
+                alert('אנא העלה קובץ אודיו תחילה');
+                return;
+            }
             
-            // מיון הסגמנטים לפי זמן התחלה
-            const sortedSegments = [...result.segments].sort((a, b) => a.start - b.start);
+            console.log("מתחיל תמלול");
+            if (loader) {
+                loader.style.display = 'flex';
+            }
             
-            sortedSegments.forEach(segment => {
-                const speakerClass = `speaker-${segment.speaker}`;
-                const timeFormatted = this.formatTime(segment.start);
+            // שליחת הקובץ לתמלול
+            const formData = new FormData();
+            formData.append('file', currentFile);
+            
+            fetch('http://localhost:8000/transcribe', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`שגיאת שרת: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("נתוני תשובה:", JSON.stringify(data, null, 2));
+                if (loader) {
+                    loader.style.display = 'none';
+                }
                 
-                html += `
-                    <div class="segment ${speakerClass}">
-                        <div class="segment-header">
-                            <span class="speaker-label">דובר ${segment.speaker}</span>
-                            <span class="timestamp">${timeFormatted}</span>
-                        </div>
-                        <p class="segment-text">${segment.text}</p>
-                    </div>
-                `;
+                // הצגת התמלול בתיבת טקסט - פונקציונליות מינימלית
+                if (transcriptionContainer) {
+                    if (data.full_text) {
+                        transcriptionContainer.innerHTML = `
+                            <h3>תוצאות התמלול:</h3>
+                            <textarea class="full-text-area" readonly>${data.full_text}</textarea>
+                            <button id="saveBtn" class="action-btn">
+                                <i class="fas fa-save"></i> שמור תמלול
+                            </button>
+                        `;
+                        
+                        // הוספת אירוע לכפתור השמירה
+                        const saveBtn = document.getElementById('saveBtn');
+                        if (saveBtn) {
+                            saveBtn.addEventListener('click', () => {
+                                saveTranscription(data.full_text);
+                            });
+                        }
+                    } else {
+                        transcriptionContainer.innerHTML = `
+                            <div class="error-message">לא התקבל תמלול מהשרת</div>
+                        `;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error("שגיאה בתקשורת עם השרת:", error);
+                if (loader) {
+                    loader.style.display = 'none';
+                }
+                
+                if (transcriptionContainer) {
+                    transcriptionContainer.innerHTML = `
+                        <div class="error-message">אירעה שגיאה בתהליך התמלול: ${error.message}</div>
+                    `;
+                }
             });
-            
-            this.transcriptionText.innerHTML = html;
-        } else {
-            // תצוגה רגילה ללא דוברים
-            this.transcriptionText.innerHTML = transcriptionText
-                .split('\n')
-                .map(line => `<p class="simple-text">${line}</p>`)
-                .join('');
-        }
+        });
     }
-
-
-        /**
-     * פורמט זמן משניות לתצוגה של MM:SS
-     * @param {number} seconds - זמן בשניות
-     * @returns {string} - זמן מפורמט
-     */
-    formatTime(seconds) {
-        const minutes = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }   
-    /**
-     * שמירת התמלול לקובץ טקסט
-     */
-
-    saveTranscription() {
-        if (!this.transcriptionResult) return;
-
-        // בדיקה אם יש שדה full_text או text
-        const transcriptionText = this.transcriptionResult.full_text || this.transcriptionResult.text;
+    
+    // פונקציה לשמירת התמלול - פונקציונליות בסיסית
+    function saveTranscription(text) {
+        if (!text) return;
         
-        if (!transcriptionText) return;
-
-        const blob = new Blob([transcriptionText], { type: 'text/plain' });
+        const blob = new Blob([text], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -325,31 +154,4 @@ const app = new class App {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }
-
-    /**
-     * הצגת הודעת שגיאה
-     * @param {string} message - הודעת השגיאה
-     */
-    showError(message) {
-        alert(message);
-    }
-
-    /**
-     * הוספת הודעה לצ'אט עם אנימציה
-     * @param {string} content - תוכן ההודעה
-     * @param {string} type - סוג ההודעה (system, user, audio, transcription)
-     */
-    addChatMessage(content, type = 'system') {
-        const messageElement = document.createElement('div');
-        messageElement.className = `chat-message ${type}-message`;
-        messageElement.innerHTML = content;
-        
-        this.chatMessages.appendChild(messageElement);
-        
-        // הפעלת אנימציה
-        setTimeout(() => messageElement.classList.add('show'), 10);
-        
-        // גלילה לתחתית הצ'אט
-        this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
-    }
-}(); 
+});
